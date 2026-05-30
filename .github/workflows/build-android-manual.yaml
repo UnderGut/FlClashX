@@ -1,7 +1,8 @@
 name: build-android-manual
 
 # Artifact-only Android build on Linux (avoids broken Windows-host cross-compile of libclash.so).
-# No public release, no Telegram. APK is uploaded as a workflow-run artifact.
+# No public release, no Telegram. APK uploaded as a workflow-run artifact.
+# Release-signs if the KEYSTORE secret is set; otherwise falls back to debug signing.
 on:
   push:
     branches:
@@ -11,9 +12,20 @@ on:
 jobs:
   build-android:
     runs-on: ubuntu-latest
+    env:
+      HAS_KEYSTORE: ${{ secrets.KEYSTORE != '' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+
+      - name: Setup Android Signing
+        if: env.HAS_KEYSTORE == 'true'
+        run: |
+          echo "${{ secrets.KEYSTORE }}" | base64 --decode > android/app/keystore.jks
+          echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> android/local.properties
+          echo "storePassword=${{ secrets.STORE_PASSWORD }}" >> android/local.properties
+          echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> android/local.properties
+          echo "Release signing enabled"
 
       - name: Setup Go
         uses: actions/setup-go@v6
@@ -31,8 +43,6 @@ jobs:
       - run: flutter --version
       - run: flutter pub get
 
-      # No keystore secret here -> build.gradle.kts isRelease=false -> debug-signed
-      # release APK (installs fine via sideload). Core is built natively on Linux.
       - name: Build Android
         run: dart setup.dart android --env stable
 
