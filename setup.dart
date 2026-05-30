@@ -159,11 +159,12 @@ class Build {
         "x86": "i686-linux-android21-clang",
         "x86_64": "x86_64-linux-android21-clang"
       };
-      return join(
+      final cc = join(
         prebuiltDirList.first.path,
         "bin",
         map[buildItem.archName],
       );
+      return Platform.isWindows ? "$cc.cmd" : cc;
     }
     return "gcc";
   }
