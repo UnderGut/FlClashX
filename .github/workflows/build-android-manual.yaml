@@ -1,0 +1,44 @@
+name: build-android-manual
+
+# Artifact-only Android build on Linux (avoids broken Windows-host cross-compile of libclash.so).
+# No public release, no Telegram. APK is uploaded as a workflow-run artifact.
+on:
+  push:
+    branches:
+      - "build/pre12-mihomo1925"
+  workflow_dispatch:
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: "1.26.0"
+          cache-dependency-path: |
+            core/go.sum
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.41.7"
+          cache: true
+
+      - run: flutter --version
+      - run: flutter pub get
+
+      # No keystore secret here -> build.gradle.kts isRelease=false -> debug-signed
+      # release APK (installs fine via sideload). Core is built natively on Linux.
+      - name: Build Android
+        run: dart setup.dart android --env stable
+
+      - name: Upload APKs
+        uses: actions/upload-artifact@v6
+        with:
+          name: flclashx-android-pre12-mihomo1925
+          path: ./dist
+          overwrite: true
